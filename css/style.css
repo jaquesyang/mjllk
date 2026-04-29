@@ -1,54 +1,52 @@
 /* ================= 全局样式与主题变量 ================= */
 :root {
-    --bg-start: #fef9ed;
-    --bg-end: #fdf0d5;
-    --board-bg: #5d3a1a;
-    --board-border: #3e2210;
-    --tile-bg: linear-gradient(135deg, #fffef9 0%, #f5edd6 100%);
+    --bg-start: #1a1a2e;
+    --bg-end: #16213e;
+    --board-bg: #2d1f0e;
+    --board-border: #1a0f04;
+    --tile-bg: linear-gradient(135deg, #fffef5 0%, #f0e8d0 100%);
     --tile-border: #b8860b;
-    --tile-shadow: #8b6914;
+    --tile-shadow: #6b4f14;
     --tile-inner: rgba(0,0,0,0.06);
-    --tile-text: #4a3520;
+    --tile-text: #e8d5a3;
     --tile-selected-border: #f59e0b;
     --tile-selected-shadow: #fbbf24;
-    --hud-bg: rgba(255,252,245,0.85);
-    --hud-text: #4a3520;
-    --hud-border: rgba(184,134,11,0.3);
-    --btn-bg: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
-    --btn-hover-bg: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    --hud-bg: rgba(30,25,18,0.88);
+    --hud-text: #e8d5a3;
+    --hud-border: rgba(184,134,11,0.25);
+    --btn-bg: linear-gradient(135deg, #c0392b 0%, #8b1a1a 100%);
+    --btn-hover-bg: linear-gradient(135deg, #e74c3c 0%, #b71c1c 100%);
     --btn-text: #fff;
     --accent-color: #f59e0b;
     --accent-glow: #fbbf24;
-    --surface: #fffef9;
-    --surface-border: #e8d5a3;
+    --surface: #2a2218;
+    --surface-border: #5a4a2a;
 }
 
 [data-theme="animal"] {
-    --bg-start: #f0fdf4; --bg-end: #dcfce7;
-    --board-bg: #166534; --board-border: #14532d;
-    --tile-bg: linear-gradient(135deg, #fffef9 0%, #f0fdf4 100%);
-    --tile-border: #16a34a; --tile-shadow: #15803d;
+    --bg-start: #0a1a0f; --bg-end: #0d2818;
+    --board-bg: #1a3a22; --board-border: #0d1f12;
+    --tile-border: #16a34a; --tile-shadow: #145c2e;
     --tile-selected-border: #22c55e; --tile-selected-shadow: #4ade80;
-    --hud-bg: rgba(255,252,245,0.85); --hud-text: #166534;
-    --hud-border: rgba(22,163,74,0.3);
-    --btn-bg: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-    --btn-hover-bg: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    --hud-bg: rgba(18,28,18,0.88); --hud-text: #bbf7d0;
+    --hud-border: rgba(22,163,74,0.25);
+    --btn-bg: linear-gradient(135deg, #15803d 0%, #14532d 100%);
+    --btn-hover-bg: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
     --accent-color: #22c55e; --accent-glow: #4ade80;
-    --surface-border: #bbf7d0;
+    --surface: #1a2a1a; --surface-border: #2d5a2d;
 }
 
 [data-theme="festival"] {
-    --bg-start: #fef2f2; --bg-end: #fee2e2;
-    --board-bg: #7f1d1d; --board-border: #450a0a;
-    --tile-bg: linear-gradient(135deg, #fffef9 0%, #fef2f2 100%);
-    --tile-border: #dc2626; --tile-shadow: #991b1b;
+    --bg-start: #1a0f0f; --bg-end: #2a1015;
+    --board-bg: #3d1515; --board-border: #1f0808;
+    --tile-border: #dc2626; --tile-shadow: #7f1d1d;
     --tile-selected-border: #fbbf24; --tile-selected-shadow: #f59e0b;
-    --hud-bg: rgba(255,252,245,0.85); --hud-text: #7f1d1d;
-    --hud-border: rgba(220,38,38,0.3);
-    --btn-bg: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    --btn-hover-bg: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --hud-bg: rgba(28,18,18,0.88); --hud-text: #fecaca;
+    --hud-border: rgba(220,38,38,0.25);
+    --btn-bg: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+    --btn-hover-bg: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
     --accent-color: #fbbf24; --accent-glow: #f59e0b;
-    --surface-border: #fecaca;
+    --surface: #2a1a1a; --surface-border: #5a2a2a;
 }
 
 * {
@@ -58,8 +56,79 @@
     padding: 0;
 }
 
+/* ================= 星空背景 ================= */
+#starfield {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+#starfield::before,
+#starfield::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 1px; height: 1px;
+    background: transparent;
+    border-radius: 50%;
+}
+
+#starfield::before {
+    box-shadow:
+         60px   50px #fffa,  180px  130px #fffa,  310px   90px #fffe,
+        480px  170px #fffd,  640px   60px #fffa,  780px  150px #fffe,
+        950px  110px #fffd, 1120px  190px #fffa, 1300px   80px #fffe,
+       1460px  140px #fffd, 1620px  100px #fffa, 1780px  160px #fffe,
+        100px  280px #fffd,  260px  320px #fffa,  420px  250px #fffe,
+        580px  350px #fffd,  740px  280px #fffa,  900px  340px #fffe,
+       1060px  260px #fffd, 1220px  380px #fffa, 1380px  300px #fffe,
+       1540px  360px #fffd, 1700px  240px #fffa, 1860px  330px #fffe,
+         40px  450px #fffa,  200px  500px #fffe,  360px  430px #fffd,
+        520px  520px #fffa,  680px  460px #fffe,  840px  540px #fffd,
+       1000px  420px #fffa, 1160px  510px #fffe, 1320px  470px #fffd,
+       1480px  550px #fffa, 1640px  440px #fffe, 1800px  530px #fffd,
+        120px  630px #fffe,  280px  680px #fffd,  440px  590px #fffa,
+        600px  660px #fffe,  760px  620px #fffd,  920px  690px #fffa,
+       1080px  580px #fffe, 1240px  650px #fffd, 1400px  610px #fffa,
+       1560px  680px #fffe, 1720px  570px #fffd, 1880px  640px #fffa,
+         80px  790px #fffd,  240px  840px #fffa,  400px  760px #fffe,
+        560px  820px #fffd,  720px  780px #fffa,  880px  850px #fffe,
+       1040px  740px #fffd, 1200px  810px #fffa, 1360px  770px #fffe,
+       1520px  830px #fffd, 1680px  720px #fffa, 1840px  800px #fffe,
+        160px  950px #fffa,  320px  990px #fffe,  480px  900px #fffd,
+        640px  960px #fffa,  800px  920px #fffe,  960px  980px #fffd,
+       1120px  880px #fffa, 1280px  940px #fffe, 1440px  910px #fffd,
+       1600px  970px #fffa, 1760px  890px #fffe, 1920px  960px #fffd;
+}
+
+#starfield::after {
+    box-shadow:
+        130px   70px #bcde,  340px  200px #defa,  550px  120px #cded,
+        710px  220px #defe,  870px   90px #bcda, 1030px  210px #defe,
+       1190px  130px #cded, 1350px  230px #defa, 1510px  110px #bcde,
+       1670px  180px #defe, 1830px   70px #cded,  190px  380px #defa,
+        390px  400px #bcde,  590px  330px #defe,  790px  420px #cded,
+        990px  350px #defa, 1150px  430px #bcde, 1310px  360px #defe,
+       1470px  390px #cded, 1630px  300px #defa, 1790px  410px #bcde,
+         70px  560px #defe,  230px  610px #cded,  430px  540px #bcde,
+        630px  600px #defe,  830px  520px #cded,  990px  590px #bcde,
+       1110px  550px #defe, 1270px  620px #cded, 1430px  510px #bcde,
+       1590px  580px #defe, 1750px  530px #cded, 1870px  600px #bcde,
+        170px  730px #cded,  370px  780px #bcde,  570px  700px #defe,
+        770px  750px #cded,  930px  710px #bcde, 1090px  770px #defe,
+       1250px  680px #cded, 1410px  740px #bcde, 1570px  720px #defe,
+       1730px  760px #cded, 1850px  690px #bcde,  110px  880px #defe,
+        310px  920px #cded,  510px  850px #bcde,  710px  900px #defe,
+        910px  860px #cded, 1070px  910px #bcde, 1230px  830px #defe,
+       1390px  890px #cded, 1550px  820px #bcde, 1710px  880px #defe;
+}
+
+/* ================= 页面主体 ================= */
 body {
-    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 50%, #fef3c7 100%);
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 50%, #0a0a1a 100%);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
     overflow: auto;
     display: flex;
@@ -174,11 +243,11 @@ body {
 }
 
 .tile.blocked {
-    background: linear-gradient(135deg, #e8e4d8 0%, #d5cfbf 100%);
-    border-color: #b0a890;
+    background: linear-gradient(135deg, #5a5040 0%, #423a2e 100%);
+    border-color: #6b6050;
     cursor: not-allowed;
-    box-shadow: 1px 1px 0px #a09880;
-    filter: grayscale(0.5) brightness(0.9);
+    box-shadow: 1px 1px 0px #3a3228;
+    filter: grayscale(0.6) brightness(0.6);
 }
 
 .tile.blocked img {
@@ -311,7 +380,7 @@ body {
     font-size: 1.1rem;
     margin-bottom: 28px;
     line-height: 1.6;
-    color: #6b5a3e;
+    color: #a09070;
 }
 
 .modal-btn {

@@ -7,12 +7,21 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <div id="starfield"></div>
     <div id="hud">
         <div class="hud-item">🎯 <span id="level-name">入门</span></div>
         <div class="hud-item">⏱️ 时间: <span id="timer">05:00</span></div>
         <div class="hud-item">🏆 得分: <span id="score">0</span></div>
         <div class="hud-item">🔥 连击: <span id="combo">0</span></div>
         <div class="hud-item">🀄 剩余: <span id="tiles-left">144</span></div>
+    </div>
+    <div class="level-selector">
+        <button class="level-btn active">入门</button>
+        <button class="level-btn">简单</button>
+        <button class="level-btn">进阶</button>
+        <button class="level-btn">挑战</button>
+        <button class="level-btn">困难</button>
+        <button class="level-btn">大师</button>
     </div>
     <div id="board-container">
         <div id="game-board">
@@ -29,13 +38,6 @@
             <button class="ctrl-btn" id="btn-restart">🔁 重开</button>
         </div>
     </div>
-    <div class="level-selector">
-        <button class="level-btn active">入门</button>
-        <button class="level-btn">简单</button>
-        <button class="level-btn">进阶</button>
-        <button class="level-btn">挑战</button>
-        <button class="level-btn">困难</button>
-        <button class="level-btn">大师</button>
     </div>
     <div id="modal-overlay">
         <div id="modal-content">
