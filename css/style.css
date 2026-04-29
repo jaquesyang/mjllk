@@ -1,0 +1,421 @@
+/* ================= 全局样式与主题变量 ================= */
+:root {
+    --bg-start: #fef9ed;
+    --bg-end: #fdf0d5;
+    --board-bg: #5d3a1a;
+    --board-border: #3e2210;
+    --tile-bg: linear-gradient(135deg, #fffef9 0%, #f5edd6 100%);
+    --tile-border: #b8860b;
+    --tile-shadow: #8b6914;
+    --tile-inner: rgba(0,0,0,0.06);
+    --tile-text: #4a3520;
+    --tile-selected-border: #f59e0b;
+    --tile-selected-shadow: #fbbf24;
+    --hud-bg: rgba(255,252,245,0.85);
+    --hud-text: #4a3520;
+    --hud-border: rgba(184,134,11,0.3);
+    --btn-bg: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+    --btn-hover-bg: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    --btn-text: #fff;
+    --accent-color: #f59e0b;
+    --accent-glow: #fbbf24;
+    --surface: #fffef9;
+    --surface-border: #e8d5a3;
+}
+
+[data-theme="animal"] {
+    --bg-start: #f0fdf4; --bg-end: #dcfce7;
+    --board-bg: #166534; --board-border: #14532d;
+    --tile-bg: linear-gradient(135deg, #fffef9 0%, #f0fdf4 100%);
+    --tile-border: #16a34a; --tile-shadow: #15803d;
+    --tile-selected-border: #22c55e; --tile-selected-shadow: #4ade80;
+    --hud-bg: rgba(255,252,245,0.85); --hud-text: #166534;
+    --hud-border: rgba(22,163,74,0.3);
+    --btn-bg: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    --btn-hover-bg: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    --accent-color: #22c55e; --accent-glow: #4ade80;
+    --surface-border: #bbf7d0;
+}
+
+[data-theme="festival"] {
+    --bg-start: #fef2f2; --bg-end: #fee2e2;
+    --board-bg: #7f1d1d; --board-border: #450a0a;
+    --tile-bg: linear-gradient(135deg, #fffef9 0%, #fef2f2 100%);
+    --tile-border: #dc2626; --tile-shadow: #991b1b;
+    --tile-selected-border: #fbbf24; --tile-selected-shadow: #f59e0b;
+    --hud-bg: rgba(255,252,245,0.85); --hud-text: #7f1d1d;
+    --hud-border: rgba(220,38,38,0.3);
+    --btn-bg: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    --btn-hover-bg: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    --accent-color: #fbbf24; --accent-glow: #f59e0b;
+    --surface-border: #fecaca;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 50%, #fef3c7 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    transition: background 0.5s;
+    padding: 10px 0 20px;
+}
+
+/* ================= HUD ================= */
+#hud {
+    width: 100%;
+    max-width: 900px;
+    background: var(--hud-bg);
+    color: var(--hud-text);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 16px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--hud-border);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.hud-item span {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 2em;
+    text-align: center;
+}
+
+/* ================= 棋盘容器 ================= */
+#board-container {
+    flex-shrink: 0;
+    transform-origin: top center;
+    margin-top: 12px;
+}
+
+/* ================= 游戏面板 ================= */
+#game-board {
+    position: relative;
+    background: var(--board-bg);
+    border: 5px solid var(--board-border);
+    border-radius: 14px;
+    box-shadow:
+        inset 0 2px 8px rgba(255,255,255,0.08),
+        inset 0 -4px 12px rgba(0,0,0,0.3),
+        0 8px 32px rgba(0,0,0,0.2),
+        0 2px 6px rgba(0,0,0,0.1);
+    transition: background-color 0.5s;
+    overflow: visible;
+}
+
+/* ================= 牌块样式 ================= */
+.tile {
+    position: absolute;
+    width: var(--tile-w);
+    height: var(--tile-h);
+    background: var(--tile-bg);
+    border: 2px solid var(--tile-border);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow:
+        2px 3px 0px var(--tile-shadow),
+        0 1px 3px rgba(0,0,0,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+    transition: transform 0.15s ease, border-color 0.2s, box-shadow 0.2s, opacity 0.3s, filter 0.3s;
+    z-index: 10;
+    overflow: hidden;
+}
+
+.tile img {
+    width: 88%;
+    height: 88%;
+    object-fit: contain;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+}
+
+.tile:hover:not(.blocked) {
+    transform: translateY(-3px);
+    box-shadow:
+        4px 6px 0px var(--tile-shadow),
+        0 4px 12px rgba(0,0,0,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.tile:active:not(.blocked) {
+    transform: translateY(-1px);
+    box-shadow:
+        1px 2px 0px var(--tile-shadow),
+        0 1px 3px rgba(0,0,0,0.12),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.tile.blocked {
+    background: linear-gradient(135deg, #e8e4d8 0%, #d5cfbf 100%);
+    border-color: #b0a890;
+    cursor: not-allowed;
+    box-shadow: 1px 1px 0px #a09880;
+    filter: grayscale(0.5) brightness(0.9);
+}
+
+.tile.blocked img {
+    opacity: 0.5;
+}
+
+.tile.selected {
+    border-color: var(--tile-selected-border);
+    border-width: 3px;
+    box-shadow:
+        0 0 0 3px rgba(245,158,11,0.3),
+        0 0 20px var(--tile-selected-shadow),
+        0 4px 12px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+    transform: scale(1.06);
+    z-index: 50;
+    animation: selected-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes selected-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,0.3), 0 0 20px var(--tile-selected-shadow), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6); }
+    50% { box-shadow: 0 0 0 5px rgba(245,158,11,0.5), 0 0 28px var(--tile-selected-shadow), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.6); }
+}
+
+.tile.wrong {
+    animation: shake 0.5s;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 16px #ef4444, 0 0 32px rgba(220,38,38,0.4) !important;
+}
+
+.tile.removing {
+    animation: pop-out 0.35s forwards;
+    z-index: 60;
+}
+
+.tile.hint {
+    animation: hint-glow 0.8s ease-in-out infinite alternate;
+    border-color: var(--accent-color);
+    z-index: 50;
+}
+
+/* ================= 动画 ================= */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+@keyframes pop-out {
+    0% { transform: scale(1); opacity: 1; }
+    40% { transform: scale(1.15); opacity: 0.9; }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+@keyframes hint-glow {
+    from { box-shadow: 0 0 8px var(--accent-color), 0 0 16px var(--accent-glow), 0 2px 4px rgba(0,0,0,0.1); }
+    to { box-shadow: 0 0 18px var(--accent-color), 0 0 36px var(--accent-glow), 0 4px 8px rgba(0,0,0,0.15); }
+}
+
+/* ================= 粒子效果 ================= */
+.particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--accent-color);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 999;
+    animation: particle-fly 0.5s ease-out forwards;
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+
+@keyframes particle-fly {
+    to {
+        opacity: 0;
+        transform: translate(var(--px), var(--py)) scale(0);
+    }
+}
+
+/* ================= 连线画布 ================= */
+#connection-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 90;
+}
+
+/* ================= 弹窗 ================= */
+#modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+#modal-content {
+    background: var(--surface);
+    color: var(--tile-text);
+    padding: 36px 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.1);
+    border: 2px solid var(--surface-border);
+    animation: modal-in 0.3s ease-out;
+}
+
+@keyframes modal-in {
+    from { transform: scale(0.9) translateY(20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+#modal-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+#modal-text {
+    font-size: 1.1rem;
+    margin-bottom: 28px;
+    line-height: 1.6;
+    color: #6b5a3e;
+}
+
+.modal-btn {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    padding: 12px 32px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.modal-btn:hover {
+    background: var(--btn-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.modal-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* ================= 控制按钮 ================= */
+.controls {
+    display: flex;
+    gap: 12px;
+}
+
+.ctrl-btn {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: transform 0.15s ease, box-shadow 0.2s, background 0.2s;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+    letter-spacing: 0.01em;
+}
+
+.ctrl-btn:hover {
+    background: var(--btn-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.18), 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ctrl-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+}
+
+.ctrl-btn:disabled {
+    background: linear-gradient(135deg, #b0a890 0%, #9e9680 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ================= 关卡选择 ================= */
+.level-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.level-btn {
+    background: var(--surface);
+    color: var(--tile-text);
+    border: 2px solid var(--surface-border);
+    padding: 8px 16px;
+    border-radius: 22px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.level-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.level-btn.active {
+    background: var(--accent-color);
+    color: #fff;
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 12px rgba(245,158,11,0.35);
+    transform: translateY(-1px);
+}
+
+/* ================= 按钮行容器 ================= */
+.control-row {
+    margin-top: 14px;
+    display: flex;
+    gap: 15px;
+}

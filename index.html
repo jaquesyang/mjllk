@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>麻将连连看 - 终极稳定版</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="hud">
+        <div class="hud-item">🎯 <span id="level-name">入门</span></div>
+        <div class="hud-item">⏱️ 时间: <span id="timer">05:00</span></div>
+        <div class="hud-item">🏆 得分: <span id="score">0</span></div>
+        <div class="hud-item">🔥 连击: <span id="combo">0</span></div>
+        <div class="hud-item">🀄 剩余: <span id="tiles-left">144</span></div>
+    </div>
+    <div id="board-container">
+        <div id="game-board">
+            <canvas id="connection-line"></canvas>
+        </div>
+    </div>
+    <div class="control-row">
+        <div class="controls">
+            <button class="ctrl-btn" id="btn-hint">💡 提示 (<span id="hint-count">3</span>)</button>
+            <button class="ctrl-btn" id="btn-shuffle">🔄 洗牌 (<span id="shuffle-count">3</span>)</button>
+        </div>
+        <div class="controls">
+            <button class="ctrl-btn" id="btn-theme">🎨 主题</button>
+            <button class="ctrl-btn" id="btn-restart">🔁 重开</button>
+        </div>
+    </div>
+    <div class="level-selector">
+        <button class="level-btn active">入门</button>
+        <button class="level-btn">简单</button>
+        <button class="level-btn">进阶</button>
+        <button class="level-btn">挑战</button>
+        <button class="level-btn">困难</button>
+        <button class="level-btn">大师</button>
+    </div>
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <div id="modal-title">游戏结束</div>
+            <div id="modal-text">最终得分: 0</div>
+            <button class="modal-btn" id="btn-modal-restart">重新挑战</button>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/sound-engine.js"></script>
+    <script src="js/path-finder.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+        window.onload = () => new MahjongGame();
+    </script>
+</body>
+</html>
