@@ -35,6 +35,10 @@
 
 麻将牌图片来自维基百科：[麻将牌](https://zh.wikipedia.org/wiki/%E9%BA%BB%E9%9B%80%E7%89%8C)
 
+## 开发
+
+本项目由 [Claude Code](https://claude.ai/code)（Anthropic 的 AI 编程助手）使用 Claude Opus 4.7 模型开发完成。
+
 ## License
 
 MIT
