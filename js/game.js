@@ -29,17 +29,21 @@ class MahjongGame {
         this.layerOffsetX = 8;
         this.layerOffsetY = 8;
         this.bindEvents();
-        window.addEventListener('resize', () => this.autoScale());
+        window.addEventListener('resize', () => { this.canvasEl.width = window.innerWidth; this.canvasEl.height = window.innerHeight; this.canvasEl.style.width = window.innerWidth + 'px'; this.canvasEl.style.height = window.innerHeight + 'px'; this.autoScale(); });
         this.init();
     }
 
     init() {
-        const lv = LEVELS[this.currentLevel];
+        const lv = buildLevel(this.currentLevel);
         this.tileImages = lv.tiles;
+        this.copyCounts = lv.copyCounts;
         this.levelRows = lv.rows;
         this.levelCols = lv.cols;
         this.levelTypes = lv.tiles.length;
         document.getElementById('level-name').innerText = lv.name;
+        document.querySelectorAll('.level-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', i === this.currentLevel);
+        });
         this.updateThemeUI();
         this.calculateBoardSize();
         this.autoScale();
@@ -66,8 +70,13 @@ class MahjongGame {
         this.boardEl.style.setProperty('--tile-w', this.tileW + 'px');
         this.boardEl.style.setProperty('--tile-h', this.tileH + 'px');
 
-        this.canvasEl.width = contentW;
-        this.canvasEl.height = contentH;
+        // canvas 铺满整个窗口
+        this.canvasEl.width = window.innerWidth;
+        this.canvasEl.height = window.innerHeight;
+        this.canvasEl.style.width = window.innerWidth + 'px';
+        this.canvasEl.style.height = window.innerHeight + 'px';
+        this.canvasEl.style.left = '0px';
+        this.canvasEl.style.top = '0px';
     }
 
     autoScale() {
@@ -81,6 +90,7 @@ class MahjongGame {
         const availH = window.innerHeight - hudH - btnsH - margin - 20;
 
         const scale = Math.min(1, availW / boardW, availH / boardH);
+        this.currentScale = scale;
         this.containerEl.style.transform = `scale(${scale})`;
         this.containerEl.style.marginBottom = (-boardH * (1 - scale)) + 'px';
     }
@@ -88,11 +98,12 @@ class MahjongGame {
     // ================= 终极稳定版：分层独立生成 =================
     generateSolvableBoard() {
         this.allTiles = [];
-        let totalCards = this.levelTypes * 4;
-
-        // 1. 准备牌池并打乱
+        // 1. 准备牌池并打乱 (每种牌按副本数生成)
         let pool = [];
-        for (let i = 0; i < this.levelTypes; i++) pool.push(i, i, i, i);
+        for (let i = 0; i < this.levelTypes; i++) {
+            for (let c = 0; c < this.copyCounts[i]; c++) pool.push(i);
+        }
+        let totalCards = pool.length;
         this.shuffleArray(pool);
 
         // 2. 分层分配牌数
@@ -139,6 +150,7 @@ class MahjongGame {
             }
         }
         this.tilesLeft = this.allTiles.length;
+        this.totalTiles = this.tilesLeft;
     }
 
     fillBaseLayer(pool, rows, cols, startRow, startCol) {
@@ -304,12 +316,11 @@ class MahjongGame {
             let offsetY = -t.layer * this.layerOffsetY;
             el.style.left = (this.padX + t.col * this.tileW + offsetX) + 'px';
             el.style.top = (this.padY + t.row * this.tileH + offsetY) + 'px';
-            el.style.zIndex = 10 + t.layer * 5;
+            el.style.zIndex = 10 + t.row * this.levelCols + t.col;
 
             if (this.isTileBlocked(t)) el.classList.add('blocked');
             this.boardEl.appendChild(el);
         }
-        this.boardEl.appendChild(this.canvasEl);
     }
 
     bindEvents() {
@@ -323,8 +334,20 @@ class MahjongGame {
         document.getElementById('btn-hint').addEventListener('click', () => this.showHint());
         document.getElementById('btn-shuffle').addEventListener('click', () => this.shuffleRemaining());
         document.getElementById('btn-theme').addEventListener('click', () => this.switchTheme());
-        document.getElementById('btn-restart').addEventListener('click', () => this.restart());
+        document.getElementById('btn-restart').addEventListener('click', () => this.confirmRestart());
         document.getElementById('btn-modal-restart').addEventListener('click', () => this.restart());
+        document.getElementById('btn-confirm-yes').addEventListener('click', () => {
+            if (this.pendingLevel != null) {
+                this.setLevel(this.pendingLevel, true);
+                this.pendingLevel = null;
+            } else {
+                this.restart();
+            }
+        });
+        document.getElementById('btn-confirm-no').addEventListener('click', () => {
+            document.getElementById('modal-overlay').style.display = 'none';
+            this.pendingLevel = null;
+        });
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
             btn.addEventListener('click', () => this.setLevel(i));
         });
@@ -368,7 +391,9 @@ class MahjongGame {
         this.selectedTile = null;
         this.selectedEl = null;
         this.isAnimating = true;
-        this.drawConnectionLine(path);
+        this.drawConnectionLine(path, this.combo);
+        if (this.combo >= 2) this.sound.play('combo', this.combo);
+        if (this.combo >= 3) this.showComboEffect();
         el1.classList.add('removing');
         el2.classList.add('removing');
         this.spawnParticles(el1);
@@ -410,28 +435,104 @@ class MahjongGame {
         }, 500);
     }
 
-    drawConnectionLine(pathData) {
+    drawConnectionLine(pathData, combo) {
         const ctx = this.ctxCanvas;
         const cw = this.canvasEl.width;
         const ch = this.canvasEl.height;
         ctx.clearRect(0, 0, cw, ch);
 
+        const br = this.boardEl.getBoundingClientRect();
+        const s = this.currentScale || 1;
         const clamp = (v, max) => Math.max(0, Math.min(max, v));
         let points = pathData.path.map(p => ({
-            x: clamp(this.padX + (p.c - 2) * this.tileW + this.tileW / 2, cw),
-            y: clamp(this.padY + (p.r - 2) * this.tileH + this.tileH / 2, ch)
+            x: clamp(br.left + (this.padX + (p.c - 2) * this.tileW + this.tileW / 2) * s, cw),
+            y: clamp(br.top + (this.padY + (p.r - 2) * this.tileH + this.tileH / 2) * s, ch)
         }));
 
-        const accentColor = getComputedStyle(document.body).getPropertyValue('--accent-color').trim();
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 4;
-        ctx.shadowColor = accentColor;
-        ctx.shadowBlur = 10;
+        // 连击闪电效果：宽度和颜色随 combo 变化
+        const baseW = combo >= 3 ? 3 + combo * 2.5 : 3;
+        const colors = ['#fbbf24', '#f59e0b', '#f97316', '#ef4444', '#e040fb', '#ff00ff'];
+        const color = colors[Math.min(combo - 1, colors.length - 1)];
+
+        // 外发光
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = baseW + 6;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14 + combo * 3;
+        ctx.globalAlpha = 0.35;
         ctx.beginPath();
-        ctx.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        this.drawLightningPath(ctx, points);
         ctx.stroke();
-        setTimeout(() => ctx.clearRect(0, 0, cw, ch), 300);
+        ctx.restore();
+
+        // 主线 - 闪电锯齿
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = baseW;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8 + combo * 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        this.drawLightningPath(ctx, points);
+        ctx.stroke();
+        ctx.restore();
+
+        // 白色核心
+        ctx.save();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = Math.max(1.5, baseW * 0.4);
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 4;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        this.drawLightningPath(ctx, points);
+        ctx.stroke();
+        ctx.restore();
+
+        setTimeout(() => ctx.clearRect(0, 0, cw, ch), 350);
+    }
+
+    drawLightningPath(ctx, points) {
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            let p1 = points[i - 1];
+            let p2 = points[i];
+            let dx = p2.x - p1.x;
+            let dy = p2.y - p1.y;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 8) {
+                ctx.lineTo(p2.x, p2.y);
+                continue;
+            }
+            // 闪电锯齿：在直线上加随机偏移
+            let segs = Math.max(1, Math.floor(dist / 15));
+            for (let s = 1; s <= segs; s++) {
+                let t = s / segs;
+                let x = p1.x + dx * t;
+                let y = p1.y + dy * t;
+                let jitter = (s < segs) ? (Math.random() - 0.5) * dist * 0.12 : 0;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    y += jitter;
+                } else {
+                    x += jitter;
+                }
+                ctx.lineTo(x, y);
+            }
+        }
+    }
+
+    showComboEffect() {
+        const br = this.boardEl.getBoundingClientRect();
+        const s = this.currentScale || 1;
+        const el = document.createElement('div');
+        el.className = 'combo-popup';
+        el.style.left = (br.left + br.width / 2) + 'px';
+        el.style.top = (br.top + 20 * s) + 'px';
+        el.innerHTML = `${this.combo}<span>x</span> COMBO!`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 900);
     }
 
     spawnParticles(el) {
@@ -602,8 +703,25 @@ class MahjongGame {
         document.getElementById('modal-overlay').style.display = 'flex';
     }
 
+    confirmRestart() {
+        if (this.tilesLeft === this.totalTiles) {
+            this.restart();
+            return;
+        }
+        document.getElementById('modal-title').innerText = '确认重开';
+        document.getElementById('modal-text').innerText = '当前进度将会丢失，确定重新开始吗？';
+        document.getElementById('btn-confirm-yes').style.display = 'inline-block';
+        document.getElementById('btn-confirm-no').style.display = 'inline-block';
+        document.getElementById('btn-modal-restart').style.display = 'none';
+        document.getElementById('modal-overlay').style.display = 'flex';
+    }
+
     restart() {
         document.getElementById('modal-overlay').style.display = 'none';
+        document.getElementById('btn-confirm-yes').style.display = 'none';
+        document.getElementById('btn-confirm-no').style.display = 'none';
+        document.getElementById('btn-modal-restart').style.display = 'inline-block';
+        this.pendingLevel = null;
         this.isGameOver = false;
         this.score = 0;
         this.combo = 0;
@@ -614,10 +732,24 @@ class MahjongGame {
         this.init();
     }
 
-    setLevel(idx) {
+    setLevel(idx, force) {
         if (idx === this.currentLevel) return;
+        if (!force && this.tilesLeft < this.totalTiles) {
+            this.pendingLevel = idx;
+            document.getElementById('modal-title').innerText = '切换关卡';
+            document.getElementById('modal-text').innerText = '当前进度将会丢失，确定切换吗？';
+            document.getElementById('btn-confirm-yes').style.display = 'inline-block';
+            document.getElementById('btn-confirm-no').style.display = 'inline-block';
+            document.getElementById('btn-modal-restart').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'flex';
+            return;
+        }
         this.currentLevel = idx;
         document.getElementById('modal-overlay').style.display = 'none';
+        document.getElementById('btn-confirm-yes').style.display = 'none';
+        document.getElementById('btn-confirm-no').style.display = 'none';
+        document.getElementById('btn-modal-restart').style.display = 'inline-block';
+        this.pendingLevel = null;
         this.isGameOver = false;
         this.score = 0;
         this.combo = 0;
@@ -626,8 +758,5 @@ class MahjongGame {
         this.selectedTile = null;
         clearInterval(this.timerInterval);
         this.init();
-        document.querySelectorAll('.level-btn').forEach((btn, i) => {
-            btn.classList.toggle('active', i === idx);
-        });
     }
 }
