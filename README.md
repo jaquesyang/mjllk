@@ -37,7 +37,7 @@
 
 ## 开发
 
-本项目由 [Claude Code](https://claude.ai/code)（Anthropic 的 AI 编程助手）使用 DeepSeek-V4-pro[1m] 模型开发完成。
+本项目由 [Claude Code](https://claude.ai/code)（Anthropic 的 AI 编程助手）使用 [DeepSeek-V4-pro[1m]](https://www.deepseek.com/) 模型开发完成。
 
 ## License
 
