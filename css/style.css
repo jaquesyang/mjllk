@@ -508,6 +508,124 @@ body {
     transform: translateY(-1px);
 }
 
+/* ================= 排行榜 ================= */
+#leaderboard-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+#leaderboard-content {
+    background: var(--surface);
+    color: var(--tile-text);
+    padding: 28px 32px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    border: 2px solid var(--surface-border);
+    min-width: 320px;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: modal-in 0.3s ease-out;
+}
+
+#lb-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+}
+
+#lb-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.lb-tab {
+    background: transparent;
+    color: var(--tile-text);
+    border: 2px solid var(--surface-border);
+    padding: 5px 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.lb-tab.active {
+    background: var(--accent-color);
+    color: #fff;
+    border-color: var(--accent-color);
+}
+
+#lb-level-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.lb-lvl-btn {
+    background: transparent;
+    color: var(--tile-text);
+    border: 1px solid var(--surface-border);
+    padding: 3px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.lb-lvl-btn.active {
+    background: var(--accent-color);
+    color: #fff;
+    border-color: var(--accent-color);
+}
+
+#lb-list {
+    text-align: left;
+    margin-bottom: 16px;
+}
+
+.lb-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--surface-border);
+    font-size: 0.9rem;
+}
+
+.lb-entry:last-child { border-bottom: none; }
+
+.lb-rank {
+    font-weight: 700;
+    color: var(--accent-color);
+    width: 24px;
+}
+
+.lb-time { font-variant-numeric: tabular-nums; }
+.lb-score { color: var(--accent-color); font-weight: 600; }
+
+.lb-empty {
+    text-align: center;
+    color: #888;
+    padding: 20px 0;
+    font-size: 0.9rem;
+}
+
 /* ================= 按钮行容器 ================= */
 .control-row {
     margin-top: 14px;

@@ -17,11 +17,14 @@ class MahjongGame {
         this.combo = 0;
         this.lastMatchTime = 0;
         this.tilesLeft = 0;
-        this.timer = CONFIG.TIME_LIMIT;
-        this.hintCount = CONFIG.HINT_LIMIT;
-        this.shuffleCount = CONFIG.SHUFFLE_LIMIT;
+        this.timer = 0;
+        this.hintCount = 0;
+        this.shuffleCount = 0;
         this.isAnimating = false;
         this.isGameOver = false;
+        this.isPaused = false;
+        this.timerMode = CONFIG.TIMER_MODE;
+        this.elapsedTime = 0;
         this.timerInterval = null;
 
         this.tileW = 56;
@@ -40,7 +43,10 @@ class MahjongGame {
         this.levelRows = lv.rows;
         this.levelCols = lv.cols;
         this.levelTypes = lv.tiles.length;
+        this.hintCount = CONFIG.HINT_BASE + this.currentLevel * CONFIG.HINT_PER_LEVEL;
+        this.shuffleCount = CONFIG.SHUFFLE_BASE + this.currentLevel * CONFIG.SHUFFLE_PER_LEVEL;
         document.getElementById('level-name').innerText = lv.name;
+        document.getElementById('btn-timer-mode').innerText = this.timerMode === 'countdown' ? '⏱️ 倒计时' : '⏱️ 正计时';
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
             btn.classList.toggle('active', i === this.currentLevel);
         });
@@ -49,8 +55,8 @@ class MahjongGame {
         this.autoScale();
         this.generateSolvableBoard();
         this.renderBoard();
-        this.startTimer();
         this.updateHUD();
+        this.startTimer();
     }
 
     calculateBoardSize() {
@@ -336,10 +342,17 @@ class MahjongGame {
         document.getElementById('btn-theme').addEventListener('click', () => this.switchTheme());
         document.getElementById('btn-restart').addEventListener('click', () => this.confirmRestart());
         document.getElementById('btn-modal-restart').addEventListener('click', () => this.restart());
+        document.getElementById('btn-timer-mode').addEventListener('click', () => this.toggleTimerMode());
+        document.getElementById('btn-leaderboard').addEventListener('click', () => this.showLeaderboard());
+        document.getElementById('btn-lb-close').addEventListener('click', () => this.hideLeaderboard());
         document.getElementById('btn-confirm-yes').addEventListener('click', () => {
             if (this.pendingLevel != null) {
                 this.setLevel(this.pendingLevel, true);
                 this.pendingLevel = null;
+            } else if (this.pendingTimerMode != null) {
+                this.timerMode = this.pendingTimerMode;
+                this.pendingTimerMode = null;
+                this.restart();
             } else {
                 this.restart();
             }
@@ -347,6 +360,7 @@ class MahjongGame {
         document.getElementById('btn-confirm-no').addEventListener('click', () => {
             document.getElementById('modal-overlay').style.display = 'none';
             this.pendingLevel = null;
+            this.pendingTimerMode = null;
         });
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
             btn.addEventListener('click', () => this.setLevel(i));
@@ -661,45 +675,84 @@ class MahjongGame {
 
     startTimer() {
         if (this.timerInterval) clearInterval(this.timerInterval);
-        this.timer = CONFIG.TIME_LIMIT;
+        this.elapsedTime = 0;
         this.timerInterval = setInterval(() => {
-            if (this.isGameOver) return;
-            this.timer--;
+            if (this.isGameOver || this.isPaused) return;
+            this.elapsedTime++;
             this.updateHUD();
-            if (this.timer <= 0) this.gameLose("时间耗尽！");
+            if (this.timerMode === 'countdown') {
+                const limit = CONFIG.TIME_BASE + this.currentLevel * CONFIG.TIME_PER_LEVEL;
+                if (this.elapsedTime >= limit) this.gameLose("时间耗尽！");
+            }
         }, 1000);
     }
 
     updateHUD() {
-        let mins = Math.floor(this.timer / 60);
-        let secs = this.timer % 60;
-        document.getElementById('timer').innerText =
-            `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        document.getElementById('timer').innerText = this.getTimeStr();
         document.getElementById('score').innerText = this.score;
         document.getElementById('combo').innerText = this.combo;
         document.getElementById('tiles-left').innerText = this.tilesLeft;
         document.getElementById('hint-count').innerText = this.hintCount;
         document.getElementById('shuffle-count').innerText = this.shuffleCount;
-        document.getElementById('timer').style.color = this.timer <= 30 ? '#ff4757' : '';
+        const limit = CONFIG.TIME_BASE + this.currentLevel * CONFIG.TIME_PER_LEVEL;
+        const remaining = limit - this.elapsedTime;
+        document.getElementById('timer').style.color = (this.timerMode === 'countdown' && remaining <= 30) ? '#ff4757' : '';
+        document.getElementById('btn-timer-mode').innerText = this.timerMode === 'countdown' ? '⏱️ 倒计时' : '⏱️ 正计时';
     }
 
     gameWin() {
         this.isGameOver = true;
         clearInterval(this.timerInterval);
         this.sound.play('win');
-        this.showModal("🎉 恭喜通关", `最终得分: ${this.score}<br>用时: ${CONFIG.TIME_LIMIT - this.timer}秒`, true);
+        const lb = this.saveScore(this.score, this.elapsedTime);
+        const rank = lb.findIndex(e => e.score === this.score && e.time === this.elapsedTime);
+        this.showModal("🎉 恭喜通关", `最终得分: ${this.score}<br>用时: ${this.getTimeStr()}`, true, rank >= 0 ? { lb, rank, ourScore: this.score, ourTime: this.elapsedTime } : null);
     }
 
     gameLose(reason) {
         this.isGameOver = true;
         clearInterval(this.timerInterval);
         this.sound.play('wrong');
-        this.showModal("💔 游戏失败", `${reason}<br>得分: ${this.score}`, false);
+        const lb = this.saveScore(this.score, this.elapsedTime);
+        const rank = lb.findIndex(e => e.score === this.score && e.time === this.elapsedTime);
+        this.showModal("💔 游戏失败", `${reason}<br>得分: ${this.score}`, false, rank >= 0 ? { lb, rank, ourScore: this.score, ourTime: this.elapsedTime } : null);
     }
 
-    showModal(title, text, isWin) {
+    getTimeStr() {
+        let t = this.timerMode === 'countdown'
+            ? Math.max(0, (CONFIG.TIME_BASE + this.currentLevel * CONFIG.TIME_PER_LEVEL) - this.elapsedTime)
+            : this.elapsedTime;
+        let m = Math.floor(t / 60);
+        let s = t % 60;
+        return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    showModal(title, text, isWin, lbData) {
         document.getElementById('modal-title').innerText = title;
         document.getElementById('modal-text').innerHTML = text;
+        const lbDiv = document.getElementById('modal-leaderboard');
+        if (lbData) {
+            const modeLabel = this.timerMode === 'countdown' ? '倒计时' : '正计时';
+            let html = `<div style="margin-top:12px;font-weight:700;font-size:0.95rem;">🏅 ${LEVEL_RECIPES[this.currentLevel].name} · ${modeLabel} 排行榜</div>`;
+            html += '<div style="text-align:left;margin-top:8px;max-height:200px;overflow-y:auto;">';
+            lbData.lb.forEach((e, i) => {
+                let m = Math.floor(e.time / 60);
+                let s = e.time % 60;
+                let ts = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+                let isUs = (i === lbData.rank && e.score === lbData.ourScore && e.time === lbData.ourTime);
+                html += `<div class="lb-entry" style="${isUs ? 'background:#f59e0b;border-radius:6px;padding:4px 8px;font-weight:700;' : ''}">
+                    <span class="lb-rank" style="${isUs ? 'color:#fff;' : ''}">#${i+1}</span>
+                    <span class="lb-score" style="${isUs ? 'color:#fff;' : ''}">${e.score}分</span>
+                    <span class="lb-time" style="${isUs ? 'color:#fff;' : ''}">${ts}</span>
+                </div>`;
+            });
+            html += '</div>';
+            lbDiv.innerHTML = html;
+            lbDiv.style.display = 'block';
+        } else {
+            lbDiv.style.display = 'none';
+            lbDiv.innerHTML = '';
+        }
         document.getElementById('modal-overlay').style.display = 'flex';
     }
 
@@ -722,14 +775,107 @@ class MahjongGame {
         document.getElementById('btn-confirm-no').style.display = 'none';
         document.getElementById('btn-modal-restart').style.display = 'inline-block';
         this.pendingLevel = null;
+        this.pendingTimerMode = null;
         this.isGameOver = false;
         this.score = 0;
         this.combo = 0;
-        this.hintCount = CONFIG.HINT_LIMIT;
-        this.shuffleCount = CONFIG.SHUFFLE_LIMIT;
         this.selectedTile = null;
         clearInterval(this.timerInterval);
         this.init();
+    }
+
+    toggleTimerMode() {
+        if (!this.isGameOver && this.tilesLeft < this.totalTiles) {
+            this.pendingTimerMode = this.timerMode === 'countdown' ? 'countup' : 'countdown';
+            document.getElementById('modal-title').innerText = '切换计时模式';
+            document.getElementById('modal-text').innerText = '当前进度将会丢失，确定切换吗？';
+            document.getElementById('btn-confirm-yes').style.display = 'inline-block';
+            document.getElementById('btn-confirm-no').style.display = 'inline-block';
+            document.getElementById('btn-modal-restart').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'flex';
+            return;
+        }
+        this.timerMode = this.timerMode === 'countdown' ? 'countup' : 'countdown';
+        if (!this.isGameOver) { clearInterval(this.timerInterval); this.startTimer(); this.updateHUD(); }
+    }
+
+    getLBKey() {
+        return `mjllk_lb_${this.timerMode}_${this.currentLevel}`;
+    }
+
+    loadLeaderboard() {
+        try { return JSON.parse(localStorage.getItem(this.getLBKey()) || '[]'); } catch(e) { return []; }
+    }
+
+    saveScore(score, elapsed) {
+        let lb = this.loadLeaderboard();
+        lb.push({ score, time: elapsed, date: Date.now() });
+        lb.sort((a, b) => this.timerMode === 'countdown' ? b.score - a.score : a.time - b.time);
+        lb = lb.slice(0, 10);
+        localStorage.setItem(this.getLBKey(), JSON.stringify(lb));
+        return lb;
+    }
+
+    showLeaderboard() {
+        if (!this.isGameOver && this.tilesLeft < this.totalTiles) {
+            this.isPaused = true;
+        }
+        const overlay = document.getElementById('leaderboard-overlay');
+        overlay.style.display = 'flex';
+        this.renderLeaderboard(this.timerMode, this.currentLevel);
+
+        document.querySelectorAll('#lb-tabs .lb-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('#lb-tabs .lb-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                this.renderLeaderboard(tab.dataset.mode, this.currentLevel);
+            };
+        });
+
+        this.renderLBLevelTabs();
+    }
+
+    renderLBLevelTabs() {
+        const container = document.getElementById('lb-level-tabs');
+        container.innerHTML = LEVEL_RECIPES.map((lv, i) =>
+            `<button class="lb-lvl-btn${i === this.currentLevel ? ' active' : ''}" data-lvl="${i}">${lv.name}</button>`
+        ).join('');
+        container.querySelectorAll('.lb-lvl-btn').forEach(btn => {
+            btn.onclick = () => {
+                container.querySelectorAll('.lb-lvl-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const mode = document.querySelector('#lb-tabs .lb-tab.active').dataset.mode;
+                this.renderLeaderboard(mode, parseInt(btn.dataset.lvl));
+            };
+        });
+    }
+
+    renderLeaderboard(mode, level) {
+        const key = `mjllk_lb_${mode}_${level}`;
+        let lb = [];
+        try { lb = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
+        const list = document.getElementById('lb-list');
+        if (lb.length === 0) {
+            list.innerHTML = '<div class="lb-empty">暂无记录</div>';
+            return;
+        }
+        list.innerHTML = lb.map((e, i) => {
+            let min = Math.floor(e.time / 60);
+            let sec = e.time % 60;
+            let timeStr = `${min.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+            return `<div class="lb-entry">
+                <span class="lb-rank">#${i+1}</span>
+                <span class="lb-score">${e.score}分</span>
+                <span class="lb-time">${timeStr}</span>
+            </div>`;
+        }).join('');
+    }
+
+    hideLeaderboard() {
+        document.getElementById('leaderboard-overlay').style.display = 'none';
+        if (this.isPaused) {
+            this.isPaused = false;
+        }
     }
 
     setLevel(idx, force) {
@@ -750,11 +896,10 @@ class MahjongGame {
         document.getElementById('btn-confirm-no').style.display = 'none';
         document.getElementById('btn-modal-restart').style.display = 'inline-block';
         this.pendingLevel = null;
+        this.pendingTimerMode = null;
         this.isGameOver = false;
         this.score = 0;
         this.combo = 0;
-        this.hintCount = CONFIG.HINT_LIMIT;
-        this.shuffleCount = CONFIG.SHUFFLE_LIMIT;
         this.selectedTile = null;
         clearInterval(this.timerInterval);
         this.init();

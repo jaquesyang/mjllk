@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>麻将连连看 - 终极稳定版</title>
+    <title>麻将连连看</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div id="starfield"></div>
     <div id="hud">
         <div class="hud-item">🎯 <span id="level-name">入门</span></div>
-        <div class="hud-item">⏱️ 时间: <span id="timer">05:00</span></div>
+        <div class="hud-item">⏱️ 时间: <span id="timer">02:00</span></div>
         <div class="hud-item">🏆 得分: <span id="score">0</span></div>
         <div class="hud-item">🔥 连击: <span id="combo">0</span></div>
         <div class="hud-item">🀄 剩余: <span id="tiles-left">144</span></div>
@@ -34,9 +34,10 @@
         </div>
         <div class="controls">
             <button class="ctrl-btn" id="btn-theme">🎨 主题</button>
+            <button class="ctrl-btn" id="btn-leaderboard">🏅 排行</button>
+            <button class="ctrl-btn" id="btn-timer-mode">⏱️ 倒计时</button>
             <button class="ctrl-btn" id="btn-restart">🔁 重开</button>
         </div>
-    </div>
     </div>
     <div id="modal-overlay">
         <div id="modal-content">
@@ -45,6 +46,19 @@
             <button class="modal-btn" id="btn-confirm-yes" style="display:none">确定</button>
             <button class="modal-btn" id="btn-confirm-no" style="display:none">取消</button>
             <button class="modal-btn" id="btn-modal-restart">重新挑战</button>
+            <div id="modal-leaderboard" style="display:none"></div>
+        </div>
+    </div>
+    <div id="leaderboard-overlay" style="display:none">
+        <div id="leaderboard-content">
+            <div id="lb-title">🏅 排行榜</div>
+            <div id="lb-tabs">
+                <button class="lb-tab active" data-mode="countdown">倒计时</button>
+                <button class="lb-tab" data-mode="countup">正计时</button>
+            </div>
+            <div id="lb-level-tabs"></div>
+            <div id="lb-list"></div>
+            <button class="modal-btn" id="btn-lb-close">关闭</button>
         </div>
     </div>
 

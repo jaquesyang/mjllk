@@ -122,10 +122,14 @@ function buildLevel(levelIdx) {
 
 // ================= 游戏参数 =================
 const CONFIG = {
-    TIME_LIMIT: 3000,
-    HINT_LIMIT: 50,
-    SHUFFLE_LIMIT: 3,
-    COMBO_TIMEOUT: 300000
+    TIME_BASE: 120,           // 最低难度时间 (秒)
+    TIME_PER_LEVEL: 60,       // 每级增加时间 (秒)
+    HINT_BASE: 2,             // 最低难度提示次数
+    HINT_PER_LEVEL: 1,        // 每级增加提示次数
+    SHUFFLE_BASE: 2,          // 最低难度洗牌次数
+    SHUFFLE_PER_LEVEL: 1,     // 每级增加洗牌次数
+    COMBO_TIMEOUT: 3000,
+    TIMER_MODE: 'countdown'   // 'countdown' | 'countup'
 };
 
 // ================= 主题配色方案 =================
