@@ -49,6 +49,14 @@
             <div id="modal-leaderboard" style="display:none"></div>
         </div>
     </div>
+
+    <!-- 牌面雪碧图预加载遮罩：避免开局逐张图加载造成闪烁 -->
+    <div id="loading-overlay">
+        <div class="loading-box">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">🀄 麻将牌加载中…</div>
+        </div>
+    </div>
     <div id="leaderboard-overlay" style="display:none">
         <div id="leaderboard-content">
             <div id="lb-title">🏅 排行榜</div>
@@ -62,6 +70,8 @@
         </div>
     </div>
 
+    <!-- 牌面雪碧图分区映射（由 tools/build_sprite.py 生成） -->
+    <script src="assets/images/tiles.js"></script>
     <script src="js/config.js"></script>
     <script src="js/sound-engine.js"></script>
     <script src="js/path-finder.js"></script>

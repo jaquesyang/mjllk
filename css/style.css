@@ -1,5 +1,8 @@
 /* ================= 全局样式与主题变量 ================= */
 :root {
+    --tile-sheet: url("../assets/images/tiles.png");
+    --sprite-cols: 8;
+    --sprite-rows: 7;
     --bg-start: #1a1a2e;
     --bg-end: #16213e;
     --board-bg: #2d1f0e;
@@ -218,10 +221,14 @@ body {
     overflow: hidden;
 }
 
-.tile img {
-    width: 88%;
-    height: 88%;
-    object-fit: contain;
+/* 牌面改用雪碧图（单张合成图）分区显示，避免开局逐张加载闪烁 */
+.tile-face {
+    position: absolute;
+    inset: 6%;
+    background-image: var(--tile-sheet);
+    background-repeat: no-repeat;
+    /* 整张雪碧图缩放到 (cols×faceW) × (rows×faceH)，使每个单元正好占满牌面 */
+    background-size: calc(var(--sprite-cols) * 100%) calc(var(--sprite-rows) * 100%);
     pointer-events: none;
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
 }
@@ -250,7 +257,7 @@ body {
     filter: grayscale(0.6) brightness(0.6);
 }
 
-.tile.blocked img {
+.tile.blocked .tile-face {
     opacity: 0.5;
 }
 
@@ -631,4 +638,49 @@ body {
     margin-top: 14px;
     display: flex;
     gap: 15px;
+}
+
+/* ================= 牌面预加载遮罩 ================= */
+#loading-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 50%, #0a0a1a 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    transition: opacity 0.4s ease;
+}
+
+#loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-box {
+    text-align: center;
+    color: var(--tile-text);
+}
+
+.loading-spinner {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 18px;
+    border: 5px solid rgba(245,158,11,0.25);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--hud-text);
 }
