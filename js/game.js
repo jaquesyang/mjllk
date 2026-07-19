@@ -33,7 +33,30 @@ class MahjongGame {
         this.layerOffsetY = 8;
         this.bindEvents();
         window.addEventListener('resize', () => { this.canvasEl.width = window.innerWidth; this.canvasEl.height = window.innerHeight; this.canvasEl.style.width = window.innerWidth + 'px'; this.canvasEl.style.height = window.innerHeight + 'px'; this.autoScale(); });
-        this.init();
+        // 先预加载牌面雪碧图，整张图就绪后再渲染，避免逐张图加载造成开局闪烁
+        this.preloadTiles().then(() => this.init());
+    }
+
+    // ================= 牌面雪碧图预加载 =================
+    preloadTiles() {
+        return new Promise(resolve => {
+            const overlay = document.getElementById('loading-overlay');
+            const finish = () => {
+                if (overlay) overlay.classList.add('hidden');
+                resolve();
+            };
+            // 没有生成雪碧图时退化为逐张加载，不阻塞游戏
+            if (typeof TILE_SPRITE === 'undefined') {
+                finish();
+                return;
+            }
+            document.documentElement.style.setProperty('--sprite-cols', TILE_SPRITE.cols);
+            document.documentElement.style.setProperty('--sprite-rows', TILE_SPRITE.rows);
+            const img = new Image();
+            img.onload = finish;
+            img.onerror = finish; // 即便加载失败也不卡住游戏
+            img.src = TILE_SPRITE.url;
+        });
     }
 
     init() {
@@ -313,10 +336,22 @@ class MahjongGame {
             el.className = 'tile';
             el.id = `tile-${t.id}`;
 
-            const img = document.createElement('img');
-            img.src = `assets/images/${this.tileImages[t.type]}.png`;
-            img.draggable = false;
-            el.appendChild(img);
+            // 牌面改用雪碧图分区显示：单张合成图已预加载，按 cell 定位显示对应牌
+            const face = document.createElement('div');
+            face.className = 'tile-face';
+            if (typeof TILE_SPRITE !== 'undefined') {
+                const cell = TILE_SPRITE.tiles[this.tileImages[t.type]];
+                if (cell) {
+                    // 百分比定位分母为 (格子数-1)。在 background-size 为 cols*100% 时，
+                    // 正百分比 P = col/(cols-1)*100 正好把第 col 个格子对齐到容器。
+                    const denomX = TILE_SPRITE.cols - 1;
+                    const denomY = TILE_SPRITE.rows - 1;
+                    const px = denomX ? (cell.col / denomX) * 100 : 0;
+                    const py = denomY ? (cell.row / denomY) * 100 : 0;
+                    face.style.backgroundPosition = `${px}% ${py}%`;
+                }
+            }
+            el.appendChild(face);
 
             let offsetX = t.layer * this.layerOffsetX;
             let offsetY = -t.layer * this.layerOffsetY;
