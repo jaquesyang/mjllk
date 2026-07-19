@@ -178,6 +178,65 @@ body {
     text-align: center;
 }
 
+/* ================= 通关进度条 ================= */
+#progress-wrap {
+    width: min(900px, 92vw);
+    height: 9px;
+    background: rgba(0,0,0,0.28);
+    border-radius: 99px;
+    margin-top: 12px;
+    overflow: hidden;
+    border: 1px solid var(--hud-border);
+    z-index: 100;
+}
+
+#progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-color), var(--accent-glow));
+    border-radius: 99px;
+    transition: width 0.35s ease;
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ================= 轻量提示条 ================= */
+#toast-container {
+    position: fixed;
+    top: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1500;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(30,25,18,0.92);
+    color: var(--hud-text);
+    padding: 10px 22px;
+    border-radius: 22px;
+    border: 1px solid var(--hud-border);
+    font-weight: 600;
+    font-size: 0.92rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    opacity: 0;
+    transform: translateY(-12px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.warn {
+    border-color: #f59e0b;
+    color: #fbbf24;
+}
+
 /* ================= 棋盘容器 ================= */
 #board-container {
     flex-shrink: 0;

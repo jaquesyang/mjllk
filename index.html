@@ -14,7 +14,9 @@
         <div class="hud-item">🏆 得分: <span id="score">0</span></div>
         <div class="hud-item">🔥 连击: <span id="combo">0</span></div>
         <div class="hud-item">🀄 剩余: <span id="tiles-left">144</span></div>
+        <div class="hud-item">↩️ 悔棋: <span id="undo-count-hud">3</span></div>
     </div>
+    <div id="progress-wrap"><div id="progress-fill"></div></div>
     <div class="level-selector">
         <button class="level-btn active">入门</button>
         <button class="level-btn">简单</button>
@@ -31,9 +33,11 @@
         <div class="controls">
             <button class="ctrl-btn" id="btn-hint">💡 提示 (<span id="hint-count">3</span>)</button>
             <button class="ctrl-btn" id="btn-shuffle">🔄 洗牌 (<span id="shuffle-count">3</span>)</button>
+            <button class="ctrl-btn" id="btn-undo">↩️ 悔棋 (<span id="undo-count">3</span>)</button>
         </div>
         <div class="controls">
             <button class="ctrl-btn" id="btn-theme">🎨 主题</button>
+            <button class="ctrl-btn" id="btn-sound">🔊 音效</button>
             <button class="ctrl-btn" id="btn-leaderboard">🏅 排行</button>
             <button class="ctrl-btn" id="btn-timer-mode">⏱️ 倒计时</button>
             <button class="ctrl-btn" id="btn-restart">🔁 重开</button>
@@ -49,6 +53,9 @@
             <div id="modal-leaderboard" style="display:none"></div>
         </div>
     </div>
+
+    <!-- 轻量提示条 -->
+    <div id="toast-container"></div>
 
     <!-- 牌面雪碧图预加载遮罩：避免开局逐张图加载造成闪烁 -->
     <div id="loading-overlay">
