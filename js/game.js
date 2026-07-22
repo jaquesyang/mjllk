@@ -28,8 +28,7 @@ class MahjongGame {
             this.sound.play('achievement');
             this.refreshAchButton();
         };
-        this.tileStreak = 0;         // 连续同牌计数（以牌命名成就用）
-        this.streakType = null;      // 当前连续消除的牌类型
+        this.matchQueue = [];        // 已消除牌的代号队列（用于"连续N对同牌"成就判定）
         this.maxCombo = 0;           // 单局最高连击（成就用）
         this.usedHint = false;       // 单局是否使用过提示
         this.usedShuffle = false;    // 单局是否使用过洗牌
@@ -88,8 +87,7 @@ class MahjongGame {
         this.usedHint = false;
         this.usedShuffle = false;
         this.usedUndo = false;
-        this.tileStreak = 0;
-        this.streakType = null;
+        this.matchQueue = [];
         document.getElementById('level-name').innerText = lv.name;
         document.getElementById('btn-timer-mode').innerText = this.timerMode === 'countdown' ? '⏱️ 倒计时' : '⏱️ 正计时';
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
@@ -531,7 +529,8 @@ class MahjongGame {
             return;
         }
         this.usedUndo = true;
-        // 同牌连续计数(tileStreak)不在此清零：悔棋不应打断"连续消除同一牌"的进度。
+        // 队列只记录"已真正消除"的牌；悔棋把最近一对恢复，故弹出末尾一条，保持队列与盘面一致。
+        if (this.matchQueue.length) this.matchQueue.pop();
         const snap = this.history.pop();
         this.undoCount--;
         // 恢复牌面与分数（按快照逐一回写，可同时撤销紧随其后的自动洗牌）
@@ -575,18 +574,24 @@ class MahjongGame {
         }, 1800);
     }
 
-    // 连续同牌成就追踪：统计同一种牌连续被消除的次数，达到该牌族门槛即解锁
+    // 连续同牌成就追踪：把每次成功消除的牌【代号】压入队列，
+    // 若队列末尾连续 N 个（N=该牌族门槛）都是同一代号，则解锁对应成就。
+    // 注意：type 是牌在牌库中的序号，必须转成代号(t1/s6/...)才能匹配成就 ID。
     registerConsecutiveMatch(type) {
-        if (this.streakType === type) {
-            this.tileStreak++;
-        } else {
-            this.streakType = type;
-            this.tileStreak = 1;
+        const code = this.tileImages[type];
+        if (!code) return;
+        this.matchQueue.push(code);
+        if (this.matchQueue.length > 32) this.matchQueue.shift(); // 防止无限增长
+        const def = this.ach.getDef('tile_' + code);
+        if (!def) return;
+        const n = def.threshold;
+        if (this.matchQueue.length < n) return;
+        // 检查队列末尾连续 n 个是否全为 code
+        for (let i = this.matchQueue.length - n; i < this.matchQueue.length; i++) {
+            if (this.matchQueue[i] !== code) return;
         }
-        const def = this.ach.getDef('tile_' + type);
-        if (def && this.tileStreak >= def.threshold) {
-            this.ach.unlock('tile_' + type);
-        }
+        this.ach.unlock('tile_' + code);
+        this.ach.checkSets();   // 集齐某族/子集的牌成就时，顺带解锁对应"集合成就"
     }
 
     // 成就解锁提示（金色高亮）
@@ -626,8 +631,8 @@ class MahjongGame {
     matchFail(el1, el2) {
         this.sound.play('wrong');
         this.combo = 0;
-        // 注意：同牌连续计数(tileStreak)在此【不】清零——失败点击/悔棋都不应打断
-        // "连续消除同一牌"的进度，只有成功消除另一种牌时（registerConsecutiveMatch）才重置。
+        // 失败点击不写入队列（队列只记录成功消除的牌），也不影响已有连续进度；
+        // 只有成功消除另一种牌时（registerConsecutiveMatch）才会让"连续 N 个"判定改看新牌型。
         el1.classList.remove('selected');
         el1.classList.add('wrong');
         el2.classList.add('wrong');

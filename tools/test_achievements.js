@@ -29,7 +29,7 @@ function assert(name, cond) {
 
 const TILES = Object.values(window.TILE_POOL).flat();
 const EXPECT_TILE = TILES.length;        // 55
-const EXPECT_TOTAL = 16 + EXPECT_TILE;   // 71
+const EXPECT_TOTAL = 16 + EXPECT_TILE + 14;   // 85 (16 基础 + 55 牌 + 14 集合成就)
 
 console.log('— 基础解锁 —');
 const A = new window.AchievementManager();
@@ -38,13 +38,13 @@ assert('首次解锁返回 true', A.unlock('first_win') === true);
 assert('首次解锁后状态为 true', A.isUnlocked('first_win') === true);
 assert('重复解锁返回 false', A.unlock('first_win') === false);
 assert('unlockedCount = 1', A.unlockedCount() === 1);
-assert('totalCount = 71 (16 + 55 张牌)', A.totalCount() === EXPECT_TOTAL);
+assert('totalCount = 85 (16 基础 + 55 牌 + 14 集合)', A.totalCount() === EXPECT_TOTAL);
 
 console.log('— 以牌命名成就生成 —');
 assert('牌成就数量 = 55', A.ACHIEVEMENTS.filter(a => a.isTile).length === EXPECT_TILE);
 assert('含 tile_b1（百搭可达成）', !!A.getDef('tile_b1'));
 assert('含 tile_t1 / tile_w1', !!A.getDef('tile_t1') && !!A.getDef('tile_w1'));
-assert('t 族门槛=3', A.getDef('tile_t1').threshold === 3);
+assert('t 族门槛=4', A.getDef('tile_t1').threshold === 4);
 assert('s 族门槛=3', A.getDef('tile_s5').threshold === 3);
 assert('w 族门槛=2', A.getDef('tile_w1').threshold === 2);
 assert('f 族门槛=2', A.getDef('tile_f1').threshold === 2);
@@ -54,6 +54,12 @@ assert('b 族门槛=2', A.getDef('tile_b1').threshold === 2);
 assert('t1 成就名为"一筒"', A.getDef('tile_t1').name === '一筒');
 assert('w1 成就名为"一万"', A.getDef('tile_w1').name === '一万');
 assert('b1 成就名为"百搭"', A.getDef('tile_b1').name === '百搭');
+// 图标 emoji 映射（逐一对应牌面，非统一 🀄）
+assert('t1 图标=🀙(筒一)', A.getDef('tile_t1').icon === '🀙');
+assert('h1 图标=🀦(按用户顺序)',  A.getDef('tile_h1').icon === '🀦');
+assert('d1 图标=🐱(猫)',  A.getDef('tile_d1').icon === '🐱');
+assert('y1 图标=🎻(琴)',  A.getDef('tile_y1').icon === '🎻');
+assert('b1 图标=🀪(百搭)', A.getDef('tile_b1').icon === '🀪');
 
 console.log('— 连击成就即时解锁 —');
 assert('combo10 解锁', A.unlock('combo10') === true);
@@ -105,35 +111,90 @@ const sumOut = lvOut.tiles.reduce((s, t, i) => s + lvOut.copyCounts[i], 0);
 assert('未注入时总张数守恒', sumOut === lvOut.rows * lvOut.cols);
 Math.random = origRandom;
 
-console.log('— 连续同牌 registerConsecutiveMatch —');
+console.log('— 连续同牌 registerConsecutiveMatch（模拟真实 序号→代号 映射）—');
 const M = window.MahjongGame.prototype.registerConsecutiveMatch;
-const g1 = { ach: new window.AchievementManager(), tileStreak: 0, streakType: null };
-M.call(g1, 't1'); M.call(g1, 't1');
-assert('t1 两次未解锁(门槛3)', !g1.ach.isUnlocked('tile_t1'));
-M.call(g1, 't1');
-assert('t1 三次解锁(门槛3)', g1.ach.isUnlocked('tile_t1') === true);
+// 真实游戏中 type 是牌库序号；tileImages 把序号映射到代号，必须映射正确成就才能解锁
+const tileImages = ['t1','t2','t3','s1','s2','s3','w1','w2','b1'];
+const g1 = { ach: new window.AchievementManager(), tileImages, matchQueue: [] };
+M.call(g1, 0); M.call(g1, 0); M.call(g1, 0);   // 序号 0 = t1 三次（门槛=4，仍未解锁）
+assert('t1 三次未解锁(门槛4)', !g1.ach.isUnlocked('tile_t1'));
+M.call(g1, 0);                  // 第四次，末尾连续4个 t1
+assert('t1 四次解锁(门槛4)', g1.ach.isUnlocked('tile_t1') === true);
+assert('队列记录为代号 t1', g1.matchQueue.join(',') === 't1,t1,t1,t1');
 
-const g2 = { ach: new window.AchievementManager(), tileStreak: 0, streakType: null };
-M.call(g2, 'w1'); M.call(g2, 'w1');
+const g2 = { ach: new window.AchievementManager(), tileImages, matchQueue: [] };
+M.call(g2, 6); M.call(g2, 6);   // 序号 6 = w1 两次（门槛2）
 assert('w1 两次解锁(门槛2)', g2.ach.isUnlocked('tile_w1') === true);
 
-const g3 = { ach: new window.AchievementManager(), tileStreak: 0, streakType: null };
-M.call(g3, 't1');
-M.call(g3, 's1');   // 换类型应重置 streak
-assert('换类型后 streak 重置为 1 且类型变为 s1', g3.tileStreak === 1 && g3.streakType === 's1');
+const g3 = { ach: new window.AchievementManager(), tileImages, matchQueue: [] };
+M.call(g3, 0);                  // t1
+M.call(g3, 6);                  // w1 换类型（w 族门槛=2）
+assert('换类型后队列=[t1,w1]', g3.matchQueue.join(',') === 't1,w1');
+M.call(g3, 6);                  // w1 再来一次（末尾连续2个 w1）
+assert('w1 两次解锁(门槛2，换类型后重新累计)', g3.ach.isUnlocked('tile_w1') === true);
 
-const g4 = { ach: new window.AchievementManager(), tileStreak: 0, streakType: null };
-M.call(g4, 'b1'); M.call(g4, 'b1');
+// 换类型会打断连续：s 族门槛=3，前面夹了 t1 则需补满 3 个 s 才解锁
+const g3b = { ach: new window.AchievementManager(), tileImages, matchQueue: [] };
+M.call(g3b, 0);                 // t1
+M.call(g3b, 3); M.call(g3b, 3); // s1, s1（末尾仅2个连续，未达门槛3）
+assert('s 族夹了其他牌时2次不解锁(门槛3)', !g3b.ach.isUnlocked('tile_s1'));
+M.call(g3b, 3);                 // s1 第三次，末尾连续3个 s1
+assert('s 族补满3次解锁', g3b.ach.isUnlocked('tile_s1') === true);
+
+const g4 = { ach: new window.AchievementManager(), tileImages, matchQueue: [] };
+M.call(g4, 8); M.call(g4, 8);   // 序号 8 = b1 两次（门槛2）
 assert('b1 两次解锁(门槛2, 1%局可达成)', g4.ach.isUnlocked('tile_b1') === true);
 
-console.log('— 成就面板渲染（71 张）—');
+// 回归：序号未映射会拼出不存在的 ID（tile_0），必须解锁失败
+const g5 = { ach: new window.AchievementManager(), tileImages: ['t1'], matchQueue: [] };
+M.call(g5, 0);
+M.call(g5, 0);
+M.call(g5, 0);
+assert('映射正确时 t1 解锁（回归旧 bug：序号当代号）', g5.ach.isUnlocked('tile_t1') === true);
+
+console.log('— 集合成就（集齐某族/子集解锁汇总）—');
+function unlockAllTiles(mgr, pool) { Object.values(pool).flat().forEach(c => mgr.unlock('tile_' + c)); }
+const S = new window.AchievementManager();
+window.TILE_POOL.w.forEach(c => S.unlock('tile_' + c)); S.checkSets();
+assert('集齐万子解锁 萬子', S.isUnlocked('set_w') === true);
+assert('仅万子未解锁 麻将', !S.isUnlocked('set_all'));
+unlockAllTiles(S, window.TILE_POOL); S.checkSets();
+assert('全集解锁 麻将', S.isUnlocked('set_all') === true);
+assert('全集解锁 筒子', S.isUnlocked('set_t') === true);
+assert('全集解锁 索子', S.isUnlocked('set_s') === true);
+assert('全集解锁 番子', S.isUnlocked('set_f') === true);
+assert('全集解锁 花牌', S.isUnlocked('set_h') === true);
+assert('全集解锁 雅牌', S.isUnlocked('set_y') === true);
+assert('全集解锁 动物牌', S.isUnlocked('set_d') === true);
+
+const S2 = new window.AchievementManager();
+window.TILE_POOL.f.slice(0,4).forEach(c => S2.unlock('tile_' + c)); S2.checkSets();
+assert('集齐东南西北解锁 大四喜', S2.isUnlocked('set_big4') === true);
+window.TILE_POOL.f.slice(4,7).forEach(c => S2.unlock('tile_' + c)); S2.checkSets();
+assert('集齐中发白解锁 大三元', S2.isUnlocked('set_big3') === true);
+
+const S3 = new window.AchievementManager();
+window.TILE_POOL.h.slice(0,4).forEach(c => S3.unlock('tile_' + c)); S3.checkSets();
+assert('集齐春夏秋冬解锁 四季', S3.isUnlocked('set_h_season') === true);
+window.TILE_POOL.h.slice(4,8).forEach(c => S3.unlock('tile_' + c)); S3.checkSets();
+assert('集齐梅兰菊竹解锁 四君子', S3.isUnlocked('set_h_bamboo') === true);
+
+const S4 = new window.AchievementManager();
+window.TILE_POOL.y.slice(0,4).forEach(c => S4.unlock('tile_' + c)); S4.checkSets();
+assert('集齐琴棋书画解锁 四艺', S4.isUnlocked('set_y_art') === true);
+window.TILE_POOL.y.slice(4,8).forEach(c => S4.unlock('tile_' + c)); S4.checkSets();
+assert('集齐渔樵耕读解锁 四业', S4.isUnlocked('set_y_job') === true);
+
+assert('集合成就数量 = 14', S.ACHIEVEMENTS.filter(a => a.isSet).length === 14);
+
+console.log('— 成就面板渲染（85 张）—');
 const grid = window.document.createElement('div'); grid.id = 'ach-grid'; window.document.body.appendChild(grid);
 const cnt = window.document.createElement('div'); cnt.id = 'ach-count'; window.document.body.appendChild(cnt);
 A.renderPanel();
-assert('面板渲染 71 张卡片', grid.children.length === 71);
+assert('面板渲染 85 张卡片', grid.children.length === 85);
 assert('面板含"一筒"文案', grid.innerHTML.includes('一筒'));
 assert('面板含"百搭"文案', grid.innerHTML.includes('百搭'));
-assert('计数文案含 / 71', cnt.innerText.includes('/ 71'));
+assert('计数文案含 / 85', cnt.innerText.includes('/ 85'));
 
 console.log(`\n结果: ${pass} 通过, ${fail} 失败`);
 process.exit(fail === 0 ? 0 : 1);
