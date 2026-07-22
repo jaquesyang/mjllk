@@ -26,8 +26,8 @@ window.HTMLCanvasElement.prototype.getContext = function () {
 };
 
 // ---- load game scripts into window scope (single eval so lexical bindings are shared) ----
-const bundle = ['js/config.js', 'js/sound-engine.js', 'js/path-finder.js', 'js/game.js']
-  .map(f => fs.readFileSync(ROOT + '/' + f, 'utf8')).join('\n;\n') + '\n;window.MahjongGame = MahjongGame;';
+const bundle = ['js/config.js', 'js/sound-engine.js', 'js/path-finder.js', 'js/achievements.js', 'js/game.js']
+  .map(f => fs.readFileSync(ROOT + '/' + f, 'utf8')).join('\n;\n') + '\n;window.MahjongGame = MahjongGame; window.AchievementManager = AchievementManager;';
 window.eval(bundle);
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

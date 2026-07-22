@@ -22,6 +22,18 @@ class MahjongGame {
         this.shuffleCount = 0;
         this.undoCount = 0;
         this.history = [];           // 悔棋快照栈
+        this.ach = new AchievementManager();
+        this.ach.onUnlock = (def) => {
+            this.showAchievementToast(def.name);
+            this.sound.play('achievement');
+            this.refreshAchButton();
+        };
+        this.tileStreak = 0;         // 连续同牌计数（以牌命名成就用）
+        this.streakType = null;      // 当前连续消除的牌类型
+        this.maxCombo = 0;           // 单局最高连击（成就用）
+        this.usedHint = false;       // 单局是否使用过提示
+        this.usedShuffle = false;    // 单局是否使用过洗牌
+        this.usedUndo = false;       // 单局是否使用过悔棋
         this.isAnimating = false;
         this.isGameOver = false;
         this.isPaused = false;
@@ -72,6 +84,12 @@ class MahjongGame {
         this.shuffleCount = CONFIG.SHUFFLE_BASE + this.currentLevel * CONFIG.SHUFFLE_PER_LEVEL;
         this.undoCount = CONFIG.UNDO_BASE + this.currentLevel * CONFIG.UNDO_PER_LEVEL;
         this.history = [];
+        this.maxCombo = 0;
+        this.usedHint = false;
+        this.usedShuffle = false;
+        this.usedUndo = false;
+        this.tileStreak = 0;
+        this.streakType = null;
         document.getElementById('level-name').innerText = lv.name;
         document.getElementById('btn-timer-mode').innerText = this.timerMode === 'countdown' ? '⏱️ 倒计时' : '⏱️ 正计时';
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
@@ -83,6 +101,7 @@ class MahjongGame {
         this.generateSolvableBoard();
         this.renderBoard();
         this.updateHUD();
+        this.refreshAchButton();
         this.startTimer();
     }
 
@@ -386,6 +405,8 @@ class MahjongGame {
         document.getElementById('btn-timer-mode').addEventListener('click', () => this.toggleTimerMode());
         document.getElementById('btn-leaderboard').addEventListener('click', () => this.showLeaderboard());
         document.getElementById('btn-lb-close').addEventListener('click', () => this.hideLeaderboard());
+        document.getElementById('btn-achievements').addEventListener('click', () => this.showAchievements());
+        document.getElementById('btn-ach-close').addEventListener('click', () => this.hideAchievements());
         document.getElementById('btn-confirm-yes').addEventListener('click', () => {
             if (this.pendingLevel != null) {
                 this.setLevel(this.pendingLevel, true);
@@ -442,6 +463,10 @@ class MahjongGame {
         this.combo = (now - this.lastMatchTime < CONFIG.COMBO_TIMEOUT) ? this.combo + 1 : 1;
         this.lastMatchTime = now;
         this.score += 100 + (this.combo - 1) * 50;
+        this.maxCombo = Math.max(this.maxCombo, this.combo);
+        this.registerConsecutiveMatch(t1.type);   // 连续同牌成就追踪
+        if (this.combo >= 10) this.ach.unlock('combo10');
+        if (this.combo >= 20) this.ach.unlock('combo20');
 
         el1.classList.remove('selected');
         this.selectedTile = null;
@@ -505,6 +530,8 @@ class MahjongGame {
             this.showToast('😅 悔棋次数已用完', true);
             return;
         }
+        this.usedUndo = true;
+        // 同牌连续计数(tileStreak)不在此清零：悔棋不应打断"连续消除同一牌"的进度。
         const snap = this.history.pop();
         this.undoCount--;
         // 恢复牌面与分数（按快照逐一回写，可同时撤销紧随其后的自动洗牌）
@@ -548,9 +575,59 @@ class MahjongGame {
         }, 1800);
     }
 
+    // 连续同牌成就追踪：统计同一种牌连续被消除的次数，达到该牌族门槛即解锁
+    registerConsecutiveMatch(type) {
+        if (this.streakType === type) {
+            this.tileStreak++;
+        } else {
+            this.streakType = type;
+            this.tileStreak = 1;
+        }
+        const def = this.ach.getDef('tile_' + type);
+        if (def && this.tileStreak >= def.threshold) {
+            this.ach.unlock('tile_' + type);
+        }
+    }
+
+    // 成就解锁提示（金色高亮）
+    showAchievementToast(name) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const el = document.createElement('div');
+        el.className = 'toast ach';
+        el.innerHTML = `🏆 解锁成就：<b>${name}</b>`;
+        container.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 300);
+        }, 2600);
+    }
+
+    refreshAchButton() {
+        const el = document.getElementById('ach-count-btn');
+        if (el) el.innerText = `${this.ach.unlockedCount()}/${this.ach.totalCount()}`;
+    }
+
+    showAchievements() {
+        if (!this.isGameOver && this.tilesLeft < this.totalTiles) {
+            this.isPaused = true;
+        }
+        this.ach.renderPanel();
+        this.refreshAchButton();
+        document.getElementById('achievements-overlay').style.display = 'flex';
+    }
+
+    hideAchievements() {
+        document.getElementById('achievements-overlay').style.display = 'none';
+        if (this.isPaused) this.isPaused = false;
+    }
+
     matchFail(el1, el2) {
         this.sound.play('wrong');
         this.combo = 0;
+        // 注意：同牌连续计数(tileStreak)在此【不】清零——失败点击/悔棋都不应打断
+        // "连续消除同一牌"的进度，只有成功消除另一种牌时（registerConsecutiveMatch）才重置。
         el1.classList.remove('selected');
         el1.classList.add('wrong');
         el2.classList.add('wrong');
@@ -701,6 +778,7 @@ class MahjongGame {
     showHint() {
         if (this.hintCount <= 0 || this.isAnimating) return;
         this.hintCount--;
+        this.usedHint = true;
         this.updateHUD();
         this.sound.play('click');
         let activeTiles = this.allTiles.filter(t => !t.isRemoved && !this.isTileBlocked(t));
@@ -729,6 +807,7 @@ class MahjongGame {
     shuffleRemaining() {
         if (this.shuffleCount <= 0 || this.isAnimating) return;
         this.shuffleCount--;
+        this.usedShuffle = true;
         this.sound.play('click');
         this.updateHUD();
         this.showToast('🔄 已洗牌');
@@ -781,6 +860,7 @@ class MahjongGame {
         idx = (idx + 1) % keys.length;
         this.currentThemeKey = keys[idx];
         this.updateThemeUI();
+        this.ach.markTheme(this.currentThemeKey);
         this.sound.play('click');
     }
 
@@ -829,6 +909,20 @@ class MahjongGame {
         this.history = [];
         clearInterval(this.timerInterval);
         this.sound.play('win');
+        // 通关成就评估
+        const limit = CONFIG.TIME_BASE + this.currentLevel * CONFIG.TIME_PER_LEVEL;
+        this.ach.unlock('first_win');
+        if (!this.usedHint) this.ach.unlock('no_hint');
+        if (!this.usedShuffle) this.ach.unlock('no_shuffle');
+        if (!this.usedUndo) this.ach.unlock('no_undo');
+        if (!this.usedHint && !this.usedShuffle && !this.usedUndo) this.ach.unlock('flawless');
+        if (this.timerMode === 'countdown' && (limit - this.elapsedTime) > limit * 0.5) this.ach.unlock('speed_clear');
+        if (this.elapsedTime <= 60) this.ach.unlock('fast');
+        if (this.score >= 3000) this.ach.unlock('high_score');
+        const hour = new Date().getHours();
+        if (hour >= 0 && hour < 5) this.ach.unlock('night_owl');
+        this.ach.recordWin(this.currentLevel, this.score);
+        this.refreshAchButton();
         const lb = this.saveScore(this.score, this.elapsedTime);
         const rank = lb.findIndex(e => e.score === this.score && e.time === this.elapsedTime);
         this.showModal("🎉 恭喜通关", `最终得分: ${this.score}<br>用时: ${this.getTimeStr()}`, true, rank >= 0 ? { lb, rank, ourScore: this.score, ourTime: this.elapsedTime } : null);

@@ -33,12 +33,12 @@ const LEVEL_RECIPES = [
     },
     {
         name: '简单',
-        rows: 8, cols: 10,
+        rows: 8, cols: 11,
         recipe: [
             { key: 't', fixed: true, count: 9 },
             { key: 't', fixed: false, count: 1 },
             { key: 's', fixed: true, count: 9 },
-            { key: 's', fixed: false, count: 1 }
+            { key: 's', fixed: false, count: 3 }
         ]
     },
     {
@@ -108,9 +108,27 @@ function buildTiles(recipe) {
     return { tiles, copyCounts };
 }
 
+// 以"替换"方式注入百搭 b1：1% 概率（每局判定一次），把某一种牌的 2 对(4张)
+// 换成 b1 的 2 对(4张)。棋盘总张数不变，可解性生成逻辑不受影响。
+function injectWildcard(tiles, copyCounts) {
+    if (Math.random() >= 0.01) return;          // 每局 1% 概率
+    // 只从"恰好 2 对(4张)"的牌里挑替换目标，避免误删被叠加到 4 对(8张)的牌导致总数失衡
+    const candidates = [];
+    for (let i = 0; i < copyCounts.length; i++) {
+        if (copyCounts[i] === 4) candidates.push(i);
+    }
+    if (candidates.length === 0) return;
+    const idx = candidates[Math.floor(Math.random() * candidates.length)];
+    tiles.splice(idx, 1);                        // 去掉一种牌的整 2 对
+    copyCounts.splice(idx, 1);
+    tiles.push('b1');                            // 换成 b1 的 2 对
+    copyCounts.push(4);
+}
+
 function buildLevel(levelIdx) {
     const recipe = LEVEL_RECIPES[levelIdx];
     const { tiles, copyCounts } = buildTiles(recipe.recipe);
+    injectWildcard(tiles, copyCounts);
     return {
         name: recipe.name,
         rows: recipe.rows,
