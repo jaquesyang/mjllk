@@ -20,6 +20,8 @@ class MahjongGame {
         this.timer = 0;
         this.hintCount = 0;
         this.shuffleCount = 0;
+        this.undoCount = 0;
+        this.history = [];           // 悔棋快照栈
         this.isAnimating = false;
         this.isGameOver = false;
         this.isPaused = false;
@@ -68,6 +70,8 @@ class MahjongGame {
         this.levelTypes = lv.tiles.length;
         this.hintCount = CONFIG.HINT_BASE + this.currentLevel * CONFIG.HINT_PER_LEVEL;
         this.shuffleCount = CONFIG.SHUFFLE_BASE + this.currentLevel * CONFIG.SHUFFLE_PER_LEVEL;
+        this.undoCount = CONFIG.UNDO_BASE + this.currentLevel * CONFIG.UNDO_PER_LEVEL;
+        this.history = [];
         document.getElementById('level-name').innerText = lv.name;
         document.getElementById('btn-timer-mode').innerText = this.timerMode === 'countdown' ? '⏱️ 倒计时' : '⏱️ 正计时';
         document.querySelectorAll('.level-btn').forEach((btn, i) => {
@@ -374,6 +378,8 @@ class MahjongGame {
         });
         document.getElementById('btn-hint').addEventListener('click', () => this.showHint());
         document.getElementById('btn-shuffle').addEventListener('click', () => this.shuffleRemaining());
+        document.getElementById('btn-undo').addEventListener('click', () => this.undo());
+        document.getElementById('btn-sound').addEventListener('click', () => this.toggleSound());
         document.getElementById('btn-theme').addEventListener('click', () => this.switchTheme());
         document.getElementById('btn-restart').addEventListener('click', () => this.confirmRestart());
         document.getElementById('btn-modal-restart').addEventListener('click', () => this.restart());
@@ -430,6 +436,7 @@ class MahjongGame {
     }
 
     matchSuccess(t1, el1, t2, el2, path) {
+        this.pushHistory();          // 配对前存快照，供悔棋恢复
         this.sound.play('match');
         let now = Date.now();
         this.combo = (now - this.lastMatchTime < CONFIG.COMBO_TIMEOUT) ? this.combo + 1 : 1;
@@ -454,7 +461,9 @@ class MahjongGame {
             this.tilesLeft -= 2;
             this.pathFinder.updatePoint(t1.row, t1.col, true);
             this.pathFinder.updatePoint(t2.row, t2.col, true);
-            this.renderBoard();
+            // 增量移除：仅删掉这两张牌的 DOM，避免整盘重建造成闪烁
+            this.removeTileFromDom(t1);
+            this.removeTileFromDom(t2);
             this.updateHUD();
             this.isAnimating = false;
 
@@ -464,10 +473,79 @@ class MahjongGame {
                 if (this.shuffleCount <= 0) {
                     this.gameLose("无可用消除路径且洗牌次数耗尽！");
                 } else {
+                    this.showToast('⚠️ 无可消除，已自动洗牌', true);
                     this.shuffleRemaining();
                 }
             }
         }, 400);
+    }
+
+    // 配对成功后只移除对应 DOM 节点
+    removeTileFromDom(tile) {
+        const el = document.getElementById(`tile-${tile.id}`);
+        if (el) el.remove();
+    }
+
+    // 把当前牌面/分数/连击状态压入悔棋栈
+    pushHistory() {
+        this.history.push({
+            tiles: this.allTiles.map(t => ({ type: t.type, isRemoved: t.isRemoved })),
+            score: this.score,
+            combo: this.combo,
+            lastMatchTime: this.lastMatchTime,
+            tilesLeft: this.tilesLeft,
+            shuffleCount: this.shuffleCount,
+            hintCount: this.hintCount
+        });
+    }
+
+    undo() {
+        if (this.isAnimating || this.isGameOver || this.history.length === 0) return;
+        if (this.undoCount <= 0) {
+            this.showToast('😅 悔棋次数已用完', true);
+            return;
+        }
+        const snap = this.history.pop();
+        this.undoCount--;
+        // 恢复牌面与分数（按快照逐一回写，可同时撤销紧随其后的自动洗牌）
+        snap.tiles.forEach((s, i) => {
+            this.allTiles[i].type = s.type;
+            this.allTiles[i].isRemoved = s.isRemoved;
+        });
+        this.score = snap.score;
+        this.combo = snap.combo;
+        this.lastMatchTime = snap.lastMatchTime;
+        this.tilesLeft = snap.tilesLeft;
+        this.shuffleCount = snap.shuffleCount;
+        this.hintCount = snap.hintCount;
+        this.selectedTile = null;
+        this.selectedEl = null;
+        this.renderBoard();
+        this.updateHUD();
+        this.sound.play('click');
+        this.showToast('↩️ 已悔棋');
+    }
+
+    toggleSound() {
+        this.sound.muted = !this.sound.muted;
+        const btn = document.getElementById('btn-sound');
+        btn.innerText = this.sound.muted ? '🔇 静音' : '🔊 音效';
+        if (!this.sound.muted) this.sound.play('click');
+    }
+
+    showToast(msg, warn) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const el = document.createElement('div');
+        el.className = 'toast' + (warn ? ' warn' : '');
+        el.innerHTML = msg;
+        container.appendChild(el);
+        // 触发进入动画
+        requestAnimationFrame(() => el.classList.add('show'));
+        setTimeout(() => {
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 300);
+        }, 1800);
     }
 
     matchFail(el1, el2) {
@@ -640,10 +718,12 @@ class MahjongGame {
                             el2.classList.remove('hint');
                         }, 2000);
                     }
+                    this.showToast('💡 已高亮一对可消除');
                     return;
                 }
             }
         }
+        this.showToast('💡 当前没有可消除的牌', true);
     }
 
     shuffleRemaining() {
@@ -651,6 +731,7 @@ class MahjongGame {
         this.shuffleCount--;
         this.sound.play('click');
         this.updateHUD();
+        this.showToast('🔄 已洗牌');
         let remainingTiles = this.allTiles.filter(t => !t.isRemoved);
         let types = remainingTiles.map(t => t.type);
         this.shuffleArray(types);
@@ -729,6 +810,14 @@ class MahjongGame {
         document.getElementById('tiles-left').innerText = this.tilesLeft;
         document.getElementById('hint-count').innerText = this.hintCount;
         document.getElementById('shuffle-count').innerText = this.shuffleCount;
+        document.getElementById('undo-count').innerText = this.undoCount;
+        const undoHud = document.getElementById('undo-count-hud');
+        if (undoHud) undoHud.innerText = this.undoCount;
+        const pct = this.totalTiles ? Math.round((this.totalTiles - this.tilesLeft) / this.totalTiles * 100) : 0;
+        const fill = document.getElementById('progress-fill');
+        if (fill) fill.style.width = pct + '%';
+        const undoBtn = document.getElementById('btn-undo');
+        if (undoBtn) undoBtn.disabled = (this.history.length === 0 || this.undoCount <= 0);
         const limit = CONFIG.TIME_BASE + this.currentLevel * CONFIG.TIME_PER_LEVEL;
         const remaining = limit - this.elapsedTime;
         document.getElementById('timer').style.color = (this.timerMode === 'countdown' && remaining <= 30) ? '#ff4757' : '';
@@ -737,6 +826,7 @@ class MahjongGame {
 
     gameWin() {
         this.isGameOver = true;
+        this.history = [];
         clearInterval(this.timerInterval);
         this.sound.play('win');
         const lb = this.saveScore(this.score, this.elapsedTime);
@@ -746,6 +836,7 @@ class MahjongGame {
 
     gameLose(reason) {
         this.isGameOver = true;
+        this.history = [];
         clearInterval(this.timerInterval);
         this.sound.play('wrong');
         const lb = this.saveScore(this.score, this.elapsedTime);

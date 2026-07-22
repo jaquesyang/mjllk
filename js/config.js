@@ -128,6 +128,8 @@ const CONFIG = {
     HINT_PER_LEVEL: 1,        // 每级增加提示次数
     SHUFFLE_BASE: 2,          // 最低难度洗牌次数
     SHUFFLE_PER_LEVEL: 1,     // 每级增加洗牌次数
+    UNDO_BASE: 3,             // 最低难度悔棋次数
+    UNDO_PER_LEVEL: 1,        // 每级增加悔棋次数
     COMBO_TIMEOUT: 3000,
     TIMER_MODE: 'countdown'   // 'countdown' | 'countup'
 };

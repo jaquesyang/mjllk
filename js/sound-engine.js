@@ -1,9 +1,11 @@
 class SoundEngine {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.muted = false;
     }
 
     play(type, combo) {
+        if (this.muted) return;
         if (this.ctx.state === 'suspended') this.ctx.resume();
         const t = this.ctx.currentTime;
 
