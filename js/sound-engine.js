@@ -74,6 +74,23 @@ class SoundEngine {
                 }
                 break;
             }
+            case 'achievement': {
+                // 胜利号角式上行琶音
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                notes.forEach((f, i) => {
+                    const o = this.ctx.createOscillator();
+                    const g = this.ctx.createGain();
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.type = 'triangle';
+                    const start = t + i * 0.09;
+                    o.frequency.setValueAtTime(f, start);
+                    g.gain.setValueAtTime(0.0001, start);
+                    g.gain.exponentialRampToValueAtTime(0.12, start + 0.02);
+                    g.gain.exponentialRampToValueAtTime(0.01, start + 0.25);
+                    o.start(start); o.stop(start + 0.3);
+                });
+                break;
+            }
         }
     }
 }

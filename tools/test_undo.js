@@ -3,7 +3,7 @@ const fs = require('fs');
 
 const ROOT = '/Users/jaquesyang/Documents/mjllk';
 const html = fs.readFileSync(ROOT + '/index.html', 'utf8');
-const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true });
+const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'http://localhost/' });
 const { window } = dom;
 
 // ---- stubs for browser-only APIs ----
@@ -26,8 +26,8 @@ window.HTMLCanvasElement.prototype.getContext = function () {
 };
 
 // ---- load game scripts into window scope (single eval so lexical bindings are shared) ----
-const bundle = ['js/config.js', 'js/sound-engine.js', 'js/path-finder.js', 'js/game.js']
-  .map(f => fs.readFileSync(ROOT + '/' + f, 'utf8')).join('\n;\n') + '\n;window.MahjongGame = MahjongGame;';
+const bundle = ['js/config.js', 'js/sound-engine.js', 'js/path-finder.js', 'js/achievements.js', 'js/game.js']
+  .map(f => fs.readFileSync(ROOT + '/' + f, 'utf8')).join('\n;\n') + '\n;window.MahjongGame = MahjongGame; window.AchievementManager = AchievementManager;';
 window.eval(bundle);
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -75,6 +75,10 @@ const assert = (cond, msg) => { console.log((cond ? 'PASS' : 'FAIL') + ': ' + ms
   assert(!g.boardEl.querySelector('#tile-' + id2), 'tile2 DOM removed (incremental)');
   assert(g.score >= scoreBefore, 'score increased (' + scoreBefore + '->' + g.score + ')');
 
+  // 连续同牌队列：真实对局中 matchSuccess 传入的是牌库序号，应正确映射为代号
+  assert(g.matchQueue.length === 1, 'matchQueue has 1 entry after a real match');
+  assert(typeof g.matchQueue[0] === 'string' && g.matchQueue[0].length > 0, 'matchQueue stores code string (e.g. t1), not a raw index');
+
   // undo
   const domBeforeUndo = g.boardEl.querySelectorAll('.tile').length;
   g.undo();
@@ -90,6 +94,26 @@ const assert = (cond, msg) => { console.log((cond ? 'PASS' : 'FAIL') + ': ' + ms
   const tilesNow = g.tilesLeft;
   g.undo();
   assert(g.tilesLeft === tilesNow, 'undo with empty history is a safe no-op');
+
+  // === 端到端：用真实牌库的牌序号连续消除 N 对，验证成就真正解锁 ===
+  // 注意：此处只验证"序号→代号映射 + 连续判定"的解锁逻辑；onUnlock 的 toast/音效副作用
+  // 依赖真实浏览器 AudioContext，jsdom 下会抛 DOMException，故在测试环境临时置空。
+  g.ach.onUnlock = null;
+  const findIdx = (code) => g.tileImages.indexOf(code);
+  const tIdx = findIdx('t1') >= 0 ? findIdx('t1') : findIdx('s1');
+  const wIdx = ['w1','f1','h1','y1','d1'].map(findIdx).find(i => i >= 0);
+  if (tIdx >= 0) {
+    const def = g.ach.getDef('tile_' + g.tileImages[tIdx]);
+    for (let i = 0; i < def.threshold; i++) g.registerConsecutiveMatch(tIdx);
+    assert(g.ach.isUnlocked('tile_' + g.tileImages[tIdx]),
+      '真实序号连续消除' + def.threshold + '对解锁 ' + g.tileImages[tIdx] + '（修复序号→代号映射）');
+  }
+  if (wIdx >= 0) {
+    const def = g.ach.getDef('tile_' + g.tileImages[wIdx]);
+    for (let i = 0; i < def.threshold; i++) g.registerConsecutiveMatch(wIdx);
+    assert(g.ach.isUnlocked('tile_' + g.tileImages[wIdx]),
+      '真实序号连续消除' + def.threshold + '对解锁 ' + g.tileImages[wIdx]);
+  }
 
   console.log('\n' + (failures === 0 ? 'ALL TESTS PASSED' : failures + ' TEST(S) FAILED'));
   process.exit(failures === 0 ? 0 : 1);
